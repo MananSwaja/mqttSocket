@@ -1,0 +1,1048 @@
+index.html  :
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' ws: wss: http://localhost:3000 https://9e5b-2401-4900-1c64-cd6-d130-df4a-c5c-55f3.ngrok-free.app/;">
+    <title>MQTT Control Center</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+ <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Chat Section -->
+        <div class="section chat-section">
+            <div class="section-header">
+                <i class="fas fa-comments"></i>
+                <h2>MQTT Messages</h2>
+            </div>
+            <div class="chat-box" id="chatBox">
+                <div class="message received">
+                    <strong>System:</strong> Welcome to MQTT Control Center. Configure your connection settings to get started.
+                    <span class="timestamp">(System)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Section -->
+        <div class="section settings-section">
+            <div class="section-header">
+                <i class="fas fa-cog"></i>
+                <h2>Control Panel</h2>
+            </div>
+            
+            <div class="settings-content">
+                <!-- MQTT Configuration -->
+                <div class="config-card">
+                    <h3><i class="fas fa-network-wired"></i> MQTT Configuration</h3>
+                    <div class="form-group">
+                        <label for="protocol">Protocol</label>
+                        <select id="protocol">
+                            <option value="mqtt">MQTT (mqtt://)</option>
+                            <option value="mqtts">MQTTS (mqtts://)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="mqttid">MQTT ID</label>
+                            <input type="text" id="mqttid" placeholder="Enter MQTT Client ID">
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input type="password" id="password" placeholder="Enter Password">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="ip">Broker IP</label>
+                            <input type="text" id="ip" placeholder="Enter Broker IP">
+                        </div>
+                        <div class="form-group">
+                            <label for="port">Port</label>
+                            <input type="text" id="port" placeholder="Enter Port">
+                        </div>
+                    </div>
+                    
+                    <div class="btn-group">
+                        <button id="connectBtn" class="btn btn-primary">
+                            <i class="fas fa-plug"></i> Connect
+                        </button>
+                        <button id="disconnectBtn" class="btn btn-error">
+                            <i class="fas fa-times"></i> Disconnect
+                        </button>
+                        <button id="saveCredentials" class="btn btn-secondary">
+                            <i class="fas fa-save"></i> Save Settings
+                        </button>
+                    </div>
+                    
+                    <div id="connectionStatus" class="status-indicator status-disconnected">
+                        <i class="fas fa-circle"></i> Disconnected
+                    </div>
+                </div>
+
+                <!-- Topic Management -->
+                <div class="config-card">
+                    <h3><i class="fas fa-rss"></i> Topic Management</h3>
+                    <div class="form-group">
+                        <label for="subscribeTopic">Subscription Topic</label>
+                        <input type="text" id="subscribeTopic" placeholder="Enter topic to subscribe">
+                    </div>
+                    
+                    <div class="btn-group">
+                        <button id="sub_btn" class="btn btn-primary">
+                            <i class="fas fa-bell"></i> Subscribe
+                        </button>
+                        <button id="unsub_btn" class="btn btn-warning">
+                            <i class="fas fa-bell-slash"></i> Unsubscribe
+                        </button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="publishTopic">Publishing Topic</label>
+                        <input type="text" id="publishTopic" placeholder="Enter topic to publish">
+                        <button id="submit" class="btn btn-success" style="margin-top: 0.5rem;">
+                            <i class="fas fa-check"></i> Set Topic
+                        </button>
+                    </div>
+                    
+                    <div id="subscriptionStatus" class="status-indicator status-disconnected">
+                        <i class="fas fa-circle"></i> Not Subscribed
+                    </div>
+                </div>
+
+                <!-- Command Control -->
+                <div class="config-card">
+                    <h3><i class="fas fa-terminal"></i> Command Control</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="controlNode">Control Node</label>
+                            <input type="number" id="controlNode" placeholder="Control Node" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label for="elementId">Element ID</label>
+                            <input type="number" id="elementId" placeholder="Element ID" min="1">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="deviceCommand">Device Command</label>
+                            <input type="number" id="deviceCommand" placeholder="Device Command" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label for="commandData">Data</label>
+                            <input type="number" id="commandData" placeholder="Command Data" min="1">
+                        </div>
+                    </div>
+                    
+                    <button id="clearCommand" class="btn btn-warning">
+                        <i class="fas fa-eraser"></i> Clear Fields
+                    </button>
+                </div>
+
+                <!-- File Upload -->
+                <div class="config-card">
+                    <h3><i class="fas fa-file-excel"></i> Bulk Commands</h3>
+                    <div class="file-upload">
+                        <input type="file" id="fileInput" accept=".xlsx,.xls">
+                        <label for="fileInput" class="file-upload-label">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <span>Click to upload Excel file or drag and drop</span>
+                        </label>
+                    </div>
+                    <button id="uploadBtn" class="btn btn-primary" style="margin-top: 1rem;">
+                        <i class="fas fa-upload"></i> Process File
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+<script src="/socket.io/socket.io.js"></script>
+    <script type="module"  src="./script.js"></script>
+</body>
+   
+
+</html>
+
+
+style.css : 
+
+       :root {
+            --primary-color: #667eea;
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-color: #f093fb;
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --success-color: #4ade80;
+            --warning-color: #fbbf24;
+            --error-color: #f87171;
+            --dark-bg: #1a1a2e;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --text-primary: #2d3748;
+            --text-secondary: #718096;
+            --border-color: rgba(255, 255, 255, 0.2);
+            --shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--dark-bg);
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.1) 0%, transparent 50%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            overflow-x: hidden;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            min-height: 100vh;
+            padding: 1.5rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .section {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+        }
+
+        .section-header {
+            background: var(--primary-gradient);
+            color: white;
+            padding: 1.5rem 2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .section-header h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .section-header i {
+            font-size: 1.25rem;
+        }
+
+        /* Chat Section */
+        .chat-section {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-box {
+            flex: 1;
+            padding: 1.5rem;
+            height: calc(100vh - 200px);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            background: linear-gradient(145deg, #f8fafc 0%, #e2e8f0 100%);
+            border-radius: 0 0 24px 24px;
+        }
+
+        .chat-box::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-box::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .chat-box::-webkit-scrollbar-thumb {
+            background: var(--primary-color);
+            border-radius: 3px;
+        }
+
+        .message {
+            padding: 1rem 1.25rem;
+            border-radius: 18px;
+            max-width: 75%;
+            word-wrap: break-word;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            position: relative;
+            animation: messageSlide 0.3s ease-out;
+        }
+
+        @keyframes messageSlide {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .sent {
+            background: var(--primary-gradient);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+
+        .received {
+            background: white;
+            color: var(--text-primary);
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .timestamp {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            margin-left: 0.5rem;
+            font-weight: 400;
+        }
+
+        /* Settings Section */
+        .settings-section {
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .settings-content {
+            padding: 2rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .config-card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s ease;
+        }
+
+        .config-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .config-card h3 {
+            color: var(--primary-color);
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        label {
+            display: block;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            transform: translateY(-1px);
+        }
+
+        input.saved {
+            border-color: var(--success-color);
+            background: rgba(74, 222, 128, 0.05);
+        }
+
+        /* Button Styles */
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn-primary {
+            background: var(--primary-gradient);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(74, 222, 128, 0.4);
+        }
+
+        .btn-warning {
+            background: var(--warning-color);
+            color: white;
+        }
+
+        .btn-error {
+            background: var(--error-color);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: var(--secondary-gradient);
+            color: white;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        /* Status Indicators */
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-top: 0.5rem;
+        }
+
+        .status-connected {
+            background: rgba(74, 222, 128, 0.1);
+            color: var(--success-color);
+            border: 1px solid rgba(74, 222, 128, 0.2);
+        }
+
+        .status-disconnected {
+            background: rgba(248, 113, 113, 0.1);
+            color: var(--error-color);
+            border: 1px solid rgba(248, 113, 113, 0.2);
+        }
+
+        .status-subscribed {
+            background: rgba(251, 191, 36, 0.1);
+            color: var(--warning-color);
+            border: 1px solid rgba(251, 191, 36, 0.2);
+        }
+
+        /* File Upload */
+        .file-upload {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .file-upload input[type="file"] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-upload-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 2rem;
+            border: 2px dashed var(--primary-color);
+            border-radius: 12px;
+            background: rgba(102, 126, 234, 0.05);
+            color: var(--primary-color);
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .file-upload:hover .file-upload-label {
+            border-color: var(--secondary-color);
+            background: rgba(240, 147, 251, 0.05);
+            color: var(--secondary-color);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+                padding: 1rem;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .section-header {
+                padding: 1rem 1.5rem;
+            }
+            
+            .section-header h2 {
+                font-size: 1.25rem;
+            }
+            
+            .settings-content {
+                padding: 1.5rem;
+            }
+            
+            .btn-group {
+                flex-direction: column;
+            }
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Success Animation */
+        .success-checkmark {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--success-color);
+            position: relative;
+        }
+
+        .success-checkmark::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+
+
+        script.js : 
+           const socket = io(`http://localhost:3000/`);
+
+        let connectBtn, disconnectBtn, sub_btn, unsub_btn, submit, clearCommand, upload;
+        let connectionStatus, subscriptionStatus;
+
+        // Load saved credentials on page load
+        document.addEventListener("DOMContentLoaded", () => {
+            loadSavedCredentials();
+            initializeElements();
+            setupEventListeners();
+        });
+
+        function initializeElements() {
+            connectBtn = document.getElementById("connectBtn");
+            disconnectBtn = document.getElementById("disconnectBtn");
+            sub_btn = document.getElementById("sub_btn");
+            unsub_btn = document.getElementById("unsub_btn");
+            submit = document.getElementById("submit");
+            clearCommand = document.getElementById("clearCommand");
+            upload = document.getElementById("uploadBtn");
+            connectionStatus = document.getElementById("connectionStatus");
+            subscriptionStatus = document.getElementById("subscriptionStatus");
+        }
+
+        function loadSavedCredentials() {
+            const savedCredentials = localStorage.getItem('mqttCredentials');
+            if (savedCredentials) {
+                const credentials = JSON.parse(savedCredentials);
+                
+                const fields = ['protocol', 'ip', 'port', 'mqttid', 'password', 'publishTopic', 'subscribeTopic'];
+                fields.forEach(field => {
+                    const element = document.getElementById(field);
+                    if (element && credentials[field]) {
+                        element.value = credentials[field];
+                        element.classList.add('saved');
+                        
+                        // Add save indicator
+                        if (!element.nextElementSibling || !element.nextElementSibling.classList.contains('success-checkmark')) {
+                            const checkmark = document.createElement('div');
+                            checkmark.className = 'success-checkmark';
+                            checkmark.style.position = 'absolute';
+                            checkmark.style.right = '10px';
+                            checkmark.style.top = '50%';
+                            checkmark.style.transform = 'translateY(-50%)';
+                            
+                            const wrapper = document.createElement('div');
+                            wrapper.style.position = 'relative';
+                            element.parentNode.insertBefore(wrapper, element);
+                            wrapper.appendChild(element);
+                            wrapper.appendChild(checkmark);
+                        }
+                    }
+                });
+            }
+        }
+
+        function saveCredentials() {
+            const credentials = {
+                protocol: document.getElementById("protocol").value,
+                ip: document.getElementById("ip").value,
+                port: document.getElementById("port").value,
+                mqttid: document.getElementById("mqttid").value,
+                password: document.getElementById("password").value,
+                publishTopic: document.getElementById("publishTopic").value,
+                subscribeTopic: document.getElementById("subscribeTopic").value
+            };
+            
+            localStorage.setItem('mqttCredentials', JSON.stringify(credentials));
+            
+            // Visual feedback
+            const saveBtn = document.getElementById("saveCredentials");
+            const originalText = saveBtn.innerHTML;
+            saveBtn.innerHTML = '<div class="loading"></div> Saving...';
+            saveBtn.disabled = true;
+            
+            setTimeout(() => {
+                saveBtn.innerHTML = '<i class="fas fa-check"></i> Saved!';
+                saveBtn.classList.remove('btn-secondary');
+                saveBtn.classList.add('btn-success');
+                
+                setTimeout(() => {
+                    saveBtn.innerHTML = originalText;
+                    saveBtn.classList.remove('btn-success');
+                    saveBtn.classList.add('btn-secondary');
+                    saveBtn.disabled = false;
+                }, 1000);
+            }, 500);
+        }
+
+        function setupEventListeners() {
+            // Save credentials button
+            document.getElementById("saveCredentials").addEventListener("click", saveCredentials);
+
+            // Connect button
+            if (connectBtn) {
+                connectBtn.addEventListener("click", () => {
+                    const mqttData = {
+                        protocol: document.getElementById("protocol").value,
+                        ip: document.getElementById("ip").value,
+                        port: document.getElementById("port").value,
+                        mqttid: document.getElementById("mqttid").value,
+                        password: document.getElementById("password").value
+                    };
+                    
+                    connectBtn.innerHTML = '<div class="loading"></div> Connecting...';
+                    connectBtn.disabled = true;
+                    
+                    socket.emit("mqttData", mqttData);
+                });
+            }
+
+            // Disconnect button
+            if (disconnectBtn) {
+                disconnectBtn.addEventListener("click", () => {
+                    socket.emit("clientEnd");
+                    console.log("disconnecting");
+                });
+            }
+
+            // Subscribe button
+            if (sub_btn) {
+                sub_btn.addEventListener("click", () => {
+                    const topic2 = document.getElementById("subscribeTopic").value;
+                    if (topic2.trim()) {
+                        console.log(topic2);
+                        socket.emit("SubscribeTopic", topic2);
+                        sub_btn.innerHTML = '<div class="loading"></div> Subscribing...';
+                        sub_btn.disabled = true;
+                    } else {
+                        alert("Please enter a topic to subscribe to.");
+                    }
+                });
+            }
+
+            // Unsubscribe button
+            if (unsub_btn) {
+                unsub_btn.addEventListener("click", () => {
+                    const topic2 = document.getElementById("subscribeTopic").value;
+                    if (topic2.trim()) {
+                        console.log(topic2);
+                        socket.emit("unSubscribeTopic", topic2);
+                    } else {
+                        alert("Please enter a topic to unsubscribe from.");
+                    }
+                });
+            }
+
+            // Submit topic button
+            if (submit) {
+                submit.addEventListener("click", () => {
+                    const topic1 = document.getElementById("publishTopic").value;
+                    if (topic1.trim()) {
+                        localStorage.setItem("publishTopic", topic1);
+                        submit.innerHTML = '<i class="fas fa-check"></i> Topic Set!';
+                        submit.classList.remove('btn-success');
+                        submit.classList.add('btn-primary');
+                        
+                        setTimeout(() => {
+                            submit.innerHTML = '<i class="fas fa-check"></i> Set Topic';
+                            submit.classList.remove('btn-primary');
+                            submit.classList.add('btn-success');
+                        }, 1000);
+                    } else {
+                        alert("Please enter a publishing topic.");
+                    }
+                });
+            }
+
+            // Clear command button
+            if (clearCommand) {
+                clearCommand.addEventListener("click", () => {
+                    document.getElementById("controlNode").value = "";
+                    document.getElementById("elementId").value = "";
+                    document.getElementById("deviceCommand").value = "";
+                    document.getElementById("commandData").value = "";
+                });
+            }
+
+            // Upload button
+            if (upload) {
+                upload.addEventListener("click", () => {
+                    const fileInput = document.getElementById('fileInput');
+                    if (fileInput.files.length === 0) {
+                        alert('Please select a file to upload.');
+                        return;
+                    }
+
+                    const file = fileInput.files[0];
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    upload.innerHTML = '<div class="loading"></div> Uploading...';
+                    upload.disabled = true;
+
+                    fetch('/upload', {
+                        method: 'POST',
+                        body: formData,
+                    })
+                    .then((response) => {
+                        if (response.ok) {
+                            upload.innerHTML = '<i class="fas fa-check"></i> Uploaded!';
+                            upload.classList.remove('btn-primary');
+                            upload.classList.add('btn-success');
+                        } else {
+                            upload.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Failed';
+                            upload.classList.remove('btn-primary');
+                            upload.classList.add('btn-error');
+                        }
+                    })
+                    .catch((error) => {
+                        console.error('Error uploading file:', error);
+                        upload.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error';
+                        upload.classList.remove('btn-primary');
+                        upload.classList.add('btn-error');
+                    })
+                    .finally(() => {
+                        setTimeout(() => {
+                            upload.innerHTML = '<i class="fas fa-upload"></i> Process File';
+                            upload.className = 'btn btn-primary';
+                            upload.disabled = false;
+                        }, 2000);
+                    });
+                });
+            }
+
+            // File input change handler
+            document.getElementById('fileInput').addEventListener('change', function() {
+                const label = document.querySelector('.file-upload-label span');
+                if (this.files.length > 0) {
+                    label.textContent = `Selected: ${this.files[0].name}`;
+                } else {
+                    label.textContent = 'Click to upload Excel file or drag and drop';
+                }
+            });
+
+            // Command input handlers for Enter key
+            document.querySelectorAll("#controlNode, #elementId, #deviceCommand, #commandData").forEach(input => {
+                input.addEventListener("keypress", function(event) {
+                    if (event.key === "Enter") {
+                        event.preventDefault();
+                        
+                        const controlNode = document.getElementById("controlNode").value;
+                        const elementId = document.getElementById("elementId").value;
+                        const deviceCommand = document.getElementById("deviceCommand").value;
+                        const commandData = document.getElementById("commandData").value;
+                        
+                        if (!controlNode || !elementId || !deviceCommand || !commandData) {
+                            alert("Please fill all command fields before sending.");
+                            return;
+                        }
+
+                        if (controlNode == 0 || deviceCommand == 0) {
+                            alert("Control node command / device command cannot be 0.");
+                            return;
+                        }
+                        
+                        const mergedCommand = `#*${controlNode}*${elementId}*${deviceCommand}*${commandData}*#`;
+                        sendMessage(mergedCommand);
+                    }
+                });
+            });
+
+            // Tab navigation for inputs
+            const inputs = document.querySelectorAll('input');
+            inputs.forEach((input, index) => {
+                input.addEventListener('keydown', (event) => {
+                    if (event.key === 'Tab') {
+                        event.preventDefault();
+                        const nextInput = inputs[index + 1];
+                        if (nextInput) {
+                            nextInput.focus();
+                        } else {
+                            console.log('Last input field reached.');
+                        }
+                    }
+                });
+            });
+        }
+
+        // Socket event handlers
+        socket.on("message", ({topic, message2}) => {
+            console.log(`${message2} received on ${topic}`);
+            appendMessage("Broker", message2);
+        });
+
+        socket.on("sheetdata", (result) => {
+            if (!result) {
+                console.log("No file selected.");
+                return;
+            }
+
+            let fileData = result.commands;
+            let delay = result.delays;
+
+            if (delay) {
+                executeCommandsWithDelay(fileData, delay);
+            } else {
+                console.log("Please enter the delay time");
+                return;
+            }
+        });
+
+        socket.on("connectionstatus", data => {
+            if (data.mqttstatus === 'connected') {
+                connectBtn.innerHTML = '<i class="fas fa-check"></i> Connected';
+                connectBtn.classList.remove('btn-primary');
+                connectBtn.classList.add('btn-success');
+                connectBtn.disabled = false;
+                
+                connectionStatus.innerHTML = '<i class="fas fa-circle"></i> Connected';
+                connectionStatus.className = 'status-indicator status-connected';
+            }
+            if (data.mqttstatus === 'disconnected') {
+                connectBtn.innerHTML = '<i class="fas fa-plug"></i> Connect';
+                connectBtn.className = 'btn btn-primary';
+                connectBtn.disabled = false;
+                
+                connectionStatus.innerHTML = '<i class="fas fa-circle"></i> Disconnected';
+                connectionStatus.className = 'status-indicator status-disconnected';
+            }
+        });
+
+        socket.on("subscribestatus", data => {
+            if (data.status === 'subscribed') {
+                sub_btn.innerHTML = '<i class="fas fa-check"></i> Subscribed';
+                sub_btn.classList.remove('btn-primary');
+                sub_btn.classList.add('btn-success');
+                sub_btn.disabled = false;
+                
+                subscriptionStatus.innerHTML = '<i class="fas fa-circle"></i> Subscribed';
+                subscriptionStatus.className = 'status-indicator status-subscribed';
+            }
+            if (data.status === 'unsubscribed') {
+                sub_btn.innerHTML = '<i class="fas fa-bell"></i> Subscribe';
+                sub_btn.className = 'btn btn-primary';
+                sub_btn.disabled = false;
+                
+                subscriptionStatus.innerHTML = '<i class="fas fa-circle"></i> Not Subscribed';
+                subscriptionStatus.className = 'status-indicator status-disconnected';
+            }
+        });
+
+        // Send message function
+        function sendMessage(mergedCommand) {
+            const topic1 = localStorage.getItem("publishTopic");
+            
+            if (!topic1) {
+                alert("Error: No publishing topic found. Set it in the dashboard.");
+                return;
+            }
+            
+            const message1 = mergedCommand.toString();
+            if (message1.trim() === "") return;
+            
+            const publishData = {
+                topic1, message1
+            };
+
+            socket.emit("publishmessage", (publishData));
+            console.log(`message ${message1} is published to topic ${topic1}`);
+            appendMessage("You", message1);
+        }
+
+        // Append messages in chat
+        function appendMessage(sender, message) {
+            const chatBox = document.getElementById("chatBox");
+            if (!chatBox) return;
+            
+            const messageElement = document.createElement("div");
+            messageElement.classList.add("message", sender === "You" ? "sent" : "received");
+
+            // Get the current timestamp
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+
+            messageElement.innerHTML = `<strong>${sender}:</strong> ${message} <span class="timestamp">(${timeString})</span>`;
+
+            let errormesg = message.split("*");
+
+            const messageElements = document.querySelectorAll('.sent');
+            let response1, response2, response3;
+
+            if (sender == "Broker" && message == "#*104*40*1*#") {
+                if (messageElements.length > 0) {
+                    const lastmessage = messageElements[messageElements.length - 1];
+                    lastmessage.style.background = 'var(--warning-color)';
+                    response1 = "Control node";
+                }
+            } else if (sender == "Broker" && errormesg[1] == "102") {
+                if (messageElements.length > 0) {
+                    const lastmessage = messageElements[messageElements.length - 1];
+                    lastmessage.style.background = 'var(--success-color)';
+                    response2 = `Device/${errormesg[2]}`;
+                }
+            } else if (sender == "Broker" && errormesg[1] == "101" && errormesg[3] == "13") {
+                if (messageElements.length > 0) {
+                    const lastmessage = messageElements[messageElements.length - 1];
+                    lastmessage.style.background = 'var(--error-color)';
+                    response3 = "No Response!";
+                }
+            }
+
+            const RESPONSE = {
+                response1, response2, response3
+            };
+            
+            socket.emit("saveResponse", (RESPONSE));
+            
+            chatBox.appendChild(messageElement);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // Execute commands with delay
+        function executeCommandsWithDelay(fileData, delay) {
+            const commands = fileData;
+            const delays = delay;
+            
+            function executeNextCommand(index) {
+                if (index < (commands.length && delays.length)) {
+                    const command = String(commands[index]).trim();
+                    const delay = String(delays[index]).trim();
+                    
+                    if (command && delay) {
+                        sendMessage(command);
+                        
+                        // Set the delay for the next command
+                        setTimeout(() => {
+                            executeNextCommand(index + 1);
+                        }, delay);
+                    } else {
+                        // Skip empty lines
+                        executeNextCommand(index + 1);
+                    }
+                } else {
+                    console.log("All commands executed.");
+                }
+            }
+
+            // Start executing from the first command
+            executeNextCommand(0);
+        }

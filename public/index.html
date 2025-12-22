@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; connect-src 'self' ws: wss: http://localhost:3000 https://9e5b-2401-4900-1c64-cd6-d130-df4a-c5c-55f3.ngrok-free.app/; style-src-attr 'unsafe-inline';">
+    <title>MQTT Control Center</title>
+   <link rel="stylesheet" href="/fontawesome/css/all.min.css">
+   <link rel="stylesheet" href="styles.css">
+<script src="/js/dexie.min.js"></script>
+
+<!-- Load your IndexedDB logic -->
+<script src="./dexie.js"></script>
+ <script src="/socket.io/socket.io.js"></script>
+    <script  type="module" src="./script.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Chat Section -->
+        <div class="section chat-section">
+            <div class="section-header">
+                <div class="section-header-left">
+                    <i class="fas fa-comments"></i>
+                    <h2>MQTT Messages</h2>
+                </div>
+                <div class="header-actions">
+                    <button class="header-btn" id="clearChatBtn" title="Clear Chat">
+                        <i class="fas fa-trash">Clear Chat</i>
+                    </button>
+                    <button class="header-btn" id="exportChatBtn" title="Export Chat">
+                        <i class="fas fa-download">Export Chat</i>
+                    </button>
+                </div>
+            </div>
+            <div class="chat-box" id="chatBox">
+                <div class="empty-chat" id="emptyChatState">
+                    <i class="fas fa-comments"></i>
+                    <div>
+                        <h3>No messages yet</h3>
+                        <p>Configure your MQTT connection to start receiving messages</p>
+                    </div>
+                </div>
+            </div>
+            <div class="chat-stats" id="chatStats">
+                Messages: <span id="messageCount">0</span> | 
+                Connected: <span id="connectionTime">--</span>
+            </div>
+        </div>
+
+        <!-- Settings Section -->
+        <div class="section settings-section">
+            <div class="section-header">
+                <div class="section-header-left">
+                    <i class="fas fa-cog"></i>
+                    <h2>Control Panel</h2>
+                </div>
+            </div>
+            
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            
+            <div class="settings-content">
+
+<!-- Profile Management Section -->
+<div class="config-card">
+    <h3><i class="fas fa-user"></i> Profile Management</h3>
+    <div class="form-group">
+        <label for="profileName">Profile Name</label>
+        <input type="text" id="profileName" placeholder="Enter profile name">
+    </div>
+    <div class="form-group">
+        <label for="profileList">Saved Profiles</label>
+        <select id="profileList">
+            <option value="">Select a profile</option>
+            <!-- Profiles will be loaded here -->
+        </select>
+    </div>
+    <div class="btn-group">
+        <button id="saveProfileBtn" class="btn btn-primary">
+            <i class="fas fa-save"></i> Save Profile
+        </button>
+        <button id="loadProfileBtn" class="btn btn-secondary">
+            <i class="fas fa-download"></i> Load Profile
+        </button>
+        <button id="deleteProfileBtn" class="btn btn-error">
+            <i class="fas fa-trash"></i> Delete Profile
+        </button>
+    </div>
+</div>
+
+
+
+
+                <!-- MQTT Configuration -->
+                <div class="config-card">
+                    <h3><i class="fas fa-network-wired"></i> MQTT Configuration</h3>
+                    <div class="form-group">
+                        <label for="protocol">Protocol</label>
+                        <select id="protocol">
+                            <option value="mqtt">MQTT (mqtt://)</option>
+                            <option value="mqtts">MQTTS (mqtts://)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="mqttid">MQTT ID</label>
+                            <input type="text" id="mqttid" placeholder="Client ID">
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input type="password" id="password" placeholder="Password">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="ip">Broker IP</label>
+                            <input type="text" id="ip" placeholder="Broker IP">
+                        </div>
+                        <div class="form-group">
+                            <label for="port">Port</label>
+                            <input type="text" id="port" placeholder="Port">
+                        </div>
+                    </div>
+                    
+                    <div class="btn-group">
+                        <button id="connectBtn" class="btn btn-primary">
+                            <i class="fas fa-plug"></i> Connect
+                        </button>
+                        <button id="disconnectBtn" class="btn btn-error">
+                            <i class="fas fa-times"></i> Disconnect
+                        </button>
+                        <button id="saveCredentials" class="btn btn-secondary">
+                            <i class="fas fa-save"></i> Save
+                        </button>
+                    </div>
+                    
+                    <div id="connectionStatus" class="status-indicator status-disconnected">
+                        <i class="fas fa-circle"></i> Disconnected
+                    </div>
+                </div>
+
+                <!-- Topic Management -->
+                <div class="config-card">
+                    <h3><i class="fas fa-rss"></i> Topic Management</h3>
+                    <div class="form-group">
+                        <label for="subscribeTopic">Subscription Topic</label>
+                        <input type="text" id="subscribeTopic" placeholder="Topic to subscribe">
+                    </div>
+                    
+                    <div class="btn-group">
+                        <button id="sub_btn" class="btn btn-primary">
+                            <i class="fas fa-bell"></i> Subscribe
+                        </button>
+                        <button id="unsub_btn" class="btn btn-warning">
+                            <i class="fas fa-bell-slash"></i> Unsubscribe
+                        </button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="publishTopic">Publishing Topic</label>
+                        <input type="text" id="publishTopic" placeholder="Topic to publish">
+                        <button id="submit" class="btn btn-success" style="margin-top: 0.5rem;">
+                            <i class="fas fa-check"></i> Set Topic
+                        </button>
+                    </div>
+                    
+                    <div id="subscriptionStatus" class="status-indicator status-disconnected">
+                        <i class="fas fa-circle"></i> Not Subscribed
+                    </div>
+                </div>
+
+              <!-- Command Control -->
+                <div class="config-card">
+                    <h3><i class="fas fa-terminal"></i> Command Control</h3>
+                    <select id="commandType">
+                        <option value="1">Short Command</option>
+                        <option value="2">Long Command</option>
+                        <option value="3">String</option>
+                     
+                       
+                    </select>
+                    <div id="shortCommandInputs">
+
+                        <div class="form-row">
+                        <div class="form-group">
+                            <label for="controlNode">Control Node Command</label>
+                            <input type="number" id="controlNode" placeholder="Node" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label for="elementId">Element ID</label>
+                            <input type="number" id="elementId" placeholder="Element" min="1">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="deviceCommand">Device Command</label>
+                            <input type="number" id="deviceCommand" placeholder="Command" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label for="commandData">Data</label>
+                            <input type="number" id="commandData" placeholder="Data" min="1">
+                        </div>
+                    </div>
+
+                    </div>
+
+                        <div id="longCommandInputs" style="display: none;" >
+        <!-- Add 11 input fields here -->
+        <div class="form-row">
+            <div class="form-group">
+                <label for="longControlNode">Control Node Command</label>
+                <input type="number" id="longControlNode" placeholder="Node" min="1">
+            </div>
+           <div class="form-group">
+                            <label for="longelementid">Element iD </label>
+                            <input type="number" id="longelementid" placeholder="Data" min="1">
+                        </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="longoperation">Operation</label>
+                <input type="number" id="longoperation" placeholder="Node" min="1">
+            </div>
+           <div class="form-group">
+                            <label for="longspeed1">Speed 1</label>
+                            <input type="number" id="longspeed1" placeholder="Data" min="1">
+                        </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="longdelay1">Delay 1</label>
+                <input type="number" id="longdelay1" placeholder="Node" min="1">
+            </div>
+           <div class="form-group">
+                            <label for="longspeed2">Speed 2 </label>
+                            <input type="number" id="longspeed2" placeholder="Data" min="1">
+                        </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="longdelay2">Delay 2</label>
+                <input type="number" id="longdelay2" placeholder="Node" min="1">
+            </div>
+           <div class="form-group">
+                            <label for="longspeed3">Speed 3</label>
+                            <input type="number" id="longspeed3" placeholder="Data" min="1">
+                        </div>
+        </div>
+       
+    </div>
+
+
+     <div id="stringCommandInput" style="display: none;">
+        <div class="form-group">
+            <label for="stringCommand">String Command</label>
+            <input type="text" id="stringCommand" placeholder="Enter your command">
+        </div>
+    </div>
+                    
+                    
+                    <button id="clearCommand" class="btn btn-warning">
+                        <i class="fas fa-eraser"></i> Clear Fields
+                    </button>
+                </div>
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                <!-- File Upload -->
+                <div class="config-card">
+                    <h3><i class="fas fa-file-excel"></i> Bulk Commands</h3>
+                    <div class="file-upload">
+                        <input type="file" id="fileInput" accept=".xlsx,.xls">
+                        <label for="fileInput" class="file-upload-label">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <span>Upload Excel file</span>
+                        </label>
+                    </div>
+                    <button id="uploadBtn" class="btn btn-primary" style="margin-top: 0.75rem;">
+                        <i class="fas fa-upload"></i> Process File
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+   
+ 
+</body>
+</html>
