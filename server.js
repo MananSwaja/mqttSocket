@@ -55,11 +55,14 @@ app.use(
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", "'unsafe-inline'"],
         connectSrc: [
-          "'self'",
-          "http://localhost:3001",
+  "'self'",
+  "http://localhost:3001",
+  "ws://localhost:3001",
+  "https://mqtt-socket-backend.onrender.com",
+  "wss://mqtt-socket-backend.onrender.com",
   "https://mqtt-socket-swaja.vercel.app",
-          "ws://localhost:3001",
-        ],
+  "wss://mqtt-socket-swaja.vercel.app"
+],
       },
     },
   })
@@ -396,7 +399,11 @@ app.use(
         connectSrc: [
           "'self'",
           "http://localhost:3001",
-          "ws://localhost:3001"
+          "ws://localhost:3001",
+          "https://mqtt-socket-backend.onrender.com",
+          "wss://mqtt-socket-backend.onrender.com",
+          "https://mqtt-socket-swaja.vercel.app",
+          "wss://mqtt-socket-swaja.vercel.app"
         ]
       }
     }
