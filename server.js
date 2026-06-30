@@ -29,7 +29,7 @@ const io = new Server(server, {
   cors: {
     origin: [
       "http://localhost:3001",
-      "https://9e5b-2401-4900-1c64-cd6-d130-df4a-c5c-55f3.ngrok-free.app",
+      "https://mqtt-socket-swaja.vercel.app",
     ],
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -41,7 +41,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:3001",
-      "https://9e5b-2401-4900-1c64-cd6-d130-df4a-c5c-55f3.ngrok-free.app",
+  "https://mqtt-socket-swaja.vercel.app",
     ],
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -57,7 +57,7 @@ app.use(
         connectSrc: [
           "'self'",
           "http://localhost:3001",
-          "https://9e5b-2401-4900-1c64-cd6-d130-df4a-c5c-55f3.ngrok-free.app",
+  "https://mqtt-socket-swaja.vercel.app",
           "ws://localhost:3001",
         ],
       },
@@ -364,6 +364,44 @@ io.on("connection", (socket) => {
 server.listen(process.env.PORT, () => {
   console.log(`listening on *: ${process.env.PORT}`);
 });
+
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+
+        scriptSrc: [
+          "'self'",
+          "'unsafe-inline'"
+        ],
+
+        styleSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          "https://cdnjs.cloudflare.com",
+          "https://fonts.googleapis.com"
+        ],
+
+        fontSrc: [
+          "'self'",
+          "https://fonts.gstatic.com"
+        ],
+
+        imgSrc: [
+          "'self'",
+          "data:"
+        ],
+
+        connectSrc: [
+          "'self'",
+          "http://localhost:3001",
+          "ws://localhost:3001"
+        ]
+      }
+    }
+  })
+);
 
 app.use(express.static("public"));
 app.get("/", (req, res) => {

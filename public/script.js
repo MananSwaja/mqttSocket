@@ -9,8 +9,7 @@
 
 
         // Connect to the same origin that served this page (no hard-coded port).
-        const socket = io();
-
+const socket = io("https://mqtt-socket-backend.onrender.com");
 
 
 
