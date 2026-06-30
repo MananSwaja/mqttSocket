@@ -8,7 +8,8 @@
 
 
 
-        const socket = io(`http://localhost:3001/`);
+        // Connect to the same origin that served this page (no hard-coded port).
+        const socket = io();
 
 
 
@@ -191,7 +192,7 @@
 
         function exportChatHistory() {
             if (chatHistory.length === 0) {
-                alert('No messages to export');
+                showToast('No messages to export.', 'warning');
                 return;
             }
             
@@ -298,8 +299,51 @@
 
 
 
-            // Export chat button  
+            // Export chat button
             document.getElementById("exportChatBtn").addEventListener("click", exportChatHistory);
+
+            // Theme toggle
+            const themeBtn = document.getElementById("themeToggleBtn");
+            const syncThemeIcon = () => {
+                const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+                const icon = themeBtn.querySelector("i");
+                icon.classList.toggle("fa-moon", !isDark);
+                icon.classList.toggle("fa-sun", isDark);
+            };
+            syncThemeIcon();
+            themeBtn.addEventListener("click", () => {
+                const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+                document.documentElement.setAttribute("data-theme", next);
+                try { localStorage.setItem("theme", next); } catch (e) {}
+                syncThemeIcon();
+            });
+
+            // ── Tab navigation ──────────────────────────────────
+            const tabBtns = document.querySelectorAll(".tab-btn");
+            const tabPanels = document.querySelectorAll(".tab-panel");
+            const savedTab = (() => { try { return localStorage.getItem("activeTab"); } catch(e){} })();
+            const activateTab = (id) => {
+                tabBtns.forEach(b => b.classList.toggle("active", b.dataset.tab === id));
+                tabPanels.forEach(p => p.classList.toggle("active", p.id === `tab-${id}`));
+                try { localStorage.setItem("activeTab", id); } catch(e) {}
+            };
+            tabBtns.forEach(btn => btn.addEventListener("click", () => activateTab(btn.dataset.tab)));
+            if (savedTab) activateTab(savedTab);
+
+            // ── Command type pill switcher ──────────────────────
+            const cmdTypeBtns = document.querySelectorAll(".cmd-type-btn");
+            const cmdTypeSelect = document.getElementById("commandType");
+            cmdTypeBtns.forEach(btn => {
+                btn.addEventListener("click", () => {
+                    cmdTypeBtns.forEach(b => b.classList.remove("active"));
+                    btn.classList.add("active");
+                    cmdTypeSelect.value = btn.dataset.cmd;
+                    cmdTypeSelect.dispatchEvent(new Event("change"));
+                });
+            });
+
+            // ── Send command button ─────────────────────────────
+            document.getElementById("sendCommandBtn").addEventListener("click", buildAndSendCommand);
 
             // Save credentials button
             document.getElementById("saveCredentials").addEventListener("click", saveCredentials);
@@ -341,7 +385,7 @@
                         sub_btn.innerHTML = '<div class="loading"></div> Subscribing...';
                         sub_btn.disabled = true;
                     } else {
-                        alert("Please enter a topic to subscribe to.");
+                        showToast("Please enter a topic to subscribe to.", "warning");
                     }
                 });
             }
@@ -354,7 +398,7 @@
                         console.log(topic2);
                         socket.emit("unSubscribeTopic", topic2);
                     } else {
-                        alert("Please enter a topic to unsubscribe from.");
+                        showToast("Please enter a topic to unsubscribe from.", "warning");
                     }
                 });
             }
@@ -375,7 +419,7 @@
                             submit.classList.add('btn-success');
                         }, 1000);
                     } else {
-                        alert("Please enter a publishing topic.");
+                        showToast("Please enter a publishing topic.", "warning");
                     }
                 });
             }
@@ -418,7 +462,7 @@
                 upload.addEventListener("click", () => {
                     const fileInput = document.getElementById('fileInput');
                     if (fileInput.files.length === 0) {
-                        alert('Please select a file to upload.');
+                        showToast('Please select a file to upload.', 'warning');
                         return;
                     }
 
@@ -471,64 +515,14 @@
             });
 
             // Command input handlers for Enter key
-           document.querySelectorAll("#controlNode, #elementId, #deviceCommand, #commandData, #longControlNode,#longelementid,#longoperation,#longspeed1,#longdelay1,#longspeed2,#longdelay2,#longspeed3, #stringCommand").forEach(input => {
-    input.addEventListener("keypress", function(event) {
-        if (event.key === "Enter") {
-            event.preventDefault();
-
-            const commandType = document.getElementById("commandType").value;
-            let mergedCommand;
-
-            if (commandType === "1") { // Short Command
-                const controlNode = document.getElementById("controlNode").value;
-                const elementId = document.getElementById("elementId").value;
-                const deviceCommand = document.getElementById("deviceCommand").value;
-                const commandData = document.getElementById("commandData").value;
-
-                if (!controlNode || !elementId || !deviceCommand || !commandData) {
-                    alert("Please fill all command fields before sending.");
-                    return;
-                }
-                if (controlNode == 0) {
-                    alert("Control node command / device command cannot be 0.");
-                    return;
-                }
-
-                mergedCommand = `#*${controlNode}*${elementId}*${deviceCommand}*${commandData}*#`;
-
-            } else if (commandType === "2") { // Long Command
-                 const controlNode = document.getElementById("longControlNode").value;
-                const elementId = document.getElementById("longelementid").value;
-                const operation = document.getElementById("longoperation").value;
-                const speed1 = document.getElementById("longspeed1").value;
-                const delay1 = document.getElementById("longdelay1").value;
-                const speed2 = document.getElementById("longspeed2").value;
-                const delay2 = document.getElementById("longdelay2").value;
-                const speed3 = document.getElementById("longspeed3").value;
-
-                  if (!controlNode || !elementId || !operation || !speed1 || !delay1 || !speed2 || !delay2 || !speed3) {
-                    alert("Please fill all command fields before sending.");
-                    return;
-
-                    
-                }
-
-                
-                mergedCommand = `#*${controlNode}*${elementId}*${operation}*8*${speed1}*${delay1}*${speed2}*${delay2}*${speed3}*#`;
-                console.log(mergedCommand);
-            } else if (commandType === "3") { // String Command
-               
-
-
-                mergedCommand = document.getElementById("stringCommand").value;
-            }
-
-            if (mergedCommand) {
-                sendMessage(mergedCommand);
-            }
-        }
-    });
-});
+            document.querySelectorAll("#controlNode, #elementId, #deviceCommand, #commandData, #longControlNode,#longelementid,#longoperation,#longspeed1,#longdelay1,#longspeed2,#longdelay2,#longspeed3, #stringCommand").forEach(input => {
+                input.addEventListener("keypress", function(event) {
+                    if (event.key === "Enter") {
+                        event.preventDefault();
+                        buildAndSendCommand();
+                    }
+                });
+            });
 
 
             // Tab navigation for inputs
@@ -632,12 +626,60 @@
             }
         });
 
+        // Build command from current inputs and send it
+        function buildAndSendCommand() {
+            const commandType = document.getElementById("commandType").value;
+            let mergedCommand;
+
+            if (commandType === "1") {
+                const controlNode = document.getElementById("controlNode").value;
+                const elementId = document.getElementById("elementId").value;
+                const deviceCommand = document.getElementById("deviceCommand").value;
+                const commandData = document.getElementById("commandData").value;
+                if (!controlNode || !elementId || !deviceCommand || !commandData) {
+                    showToast("Please fill all command fields before sending.", "warning");
+                    return;
+                }
+                if (controlNode == 0) {
+                    showToast("Control node / device command cannot be 0.", "warning");
+                    return;
+                }
+                mergedCommand = `#*${controlNode}*${elementId}*${deviceCommand}*${commandData}*#`;
+
+            } else if (commandType === "2") {
+                const controlNode = document.getElementById("longControlNode").value;
+                const elementId = document.getElementById("longelementid").value;
+                const operation = document.getElementById("longoperation").value;
+                const speed1 = document.getElementById("longspeed1").value;
+                const delay1 = document.getElementById("longdelay1").value;
+                const speed2 = document.getElementById("longspeed2").value;
+                const delay2 = document.getElementById("longdelay2").value;
+                const speed3 = document.getElementById("longspeed3").value;
+                if (!controlNode || !elementId || !operation || !speed1 || !delay1 || !speed2 || !delay2 || !speed3) {
+                    showToast("Please fill all command fields before sending.", "warning");
+                    return;
+                }
+                mergedCommand = `#*${controlNode}*${elementId}*${operation}*8*${speed1}*${delay1}*${speed2}*${delay2}*${speed3}*#`;
+
+            } else if (commandType === "3") {
+                mergedCommand = document.getElementById("stringCommand").value;
+                if (!mergedCommand || !mergedCommand.trim()) {
+                    showToast("Please enter a command string.", "warning");
+                    return;
+                }
+            }
+
+            if (mergedCommand) {
+                sendMessage(mergedCommand);
+            }
+        }
+
         // Send message function
         function sendMessage(mergedCommand) {
             const topic1 = localStorage.getItem("publishTopic");
             
             if (!topic1) {
-                alert("Error: No publishing topic found. Set it in the dashboard.");
+                showToast("No publish topic set. Go to Topics tab and set one.", "error");
                 return;
             }
             
@@ -655,44 +697,40 @@
 
         // Display message in chat (internal function)
         function displayMessage(sender, message, timestamp, animate = true) {
-            // Remove empty state if present
-            if (emptyChatState.parentNode) {
-                emptyChatState.remove();
-            }
-            
+            if (emptyChatState.parentNode) emptyChatState.remove();
+
+            const isSent = sender === "You";
+            const timeString = timestamp
+                ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
             const messageElement = document.createElement("div");
-            messageElement.classList.add("message", sender === "You" ? "sent" : "received");
-            
-            if (!animate) {
-                messageElement.style.animation = 'none';
-            }
+            messageElement.classList.add("message", isSent ? "sent" : "received");
+            if (!animate) messageElement.style.animation = 'none';
 
-            const timeString = timestamp ? new Date(timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
-            messageElement.innerHTML = `<strong>${sender}:</strong> ${message} <span class="timestamp">(${timeString})</span>`;
+            messageElement.innerHTML = `
+                <div class="message-bubble">${message}</div>
+                <div class="message-meta">
+                    <span>${isSent ? 'You' : sender}</span>
+                    <span class="timestamp">${timeString}</span>
+                </div>`;
 
-            // Handle response coloring for broker messages
+            // Colour the last sent bubble based on broker acknowledgement codes
             if (sender === "Broker") {
-                let errormesg = message.split("*");
-                const sentMessages = document.querySelectorAll('.sent');
-
-                if (message == "#*104*40*1*#") {
-                    if (sentMessages.length > 0) {
-                        const lastMessage = sentMessages[sentMessages.length - 1];
-                        lastMessage.style.background = 'var(--warning-color)';
-                    }
-                } else if (errormesg[1] == "102") {
-                    if (sentMessages.length > 0) {
-                        const lastMessage = sentMessages[sentMessages.length - 1];
-                        lastMessage.style.background = 'var(--success-color)';
-                    }
-                } else if (errormesg[1] == "101" && errormesg[3] == "13") {
-                    if (sentMessages.length > 0) {
-                        const lastMessage = sentMessages[sentMessages.length - 1];
-                        lastMessage.style.background = 'var(--error-color)';
+                const parts = message.split("*");
+                const sentMessages = document.querySelectorAll('.sent .message-bubble');
+                if (sentMessages.length > 0) {
+                    const lastBubble = sentMessages[sentMessages.length - 1];
+                    if (message === "#*104*40*1*#") {
+                        lastBubble.style.background = 'var(--warning)';
+                    } else if (parts[1] === "102") {
+                        lastBubble.style.background = 'var(--success)';
+                    } else if (parts[1] === "101" && parts[3] === "13") {
+                        lastBubble.style.background = 'var(--danger)';
                     }
                 }
             }
-            
+
             chatBox.appendChild(messageElement);
             chatBox.scrollTop = chatBox.scrollHeight;
         }

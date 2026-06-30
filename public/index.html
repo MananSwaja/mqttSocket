@@ -5,336 +5,411 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; connect-src 'self' ws: wss: http://localhost:3000 https://9e5b-2401-4900-1c64-cd6-d130-df4a-c5c-55f3.ngrok-free.app/; style-src-attr 'unsafe-inline';">
     <title>MQTT Control Center</title>
-   <link rel="stylesheet" href="/fontawesome/css/all.min.css">
-   <link rel="stylesheet" href="styles.css">
-<script src="/js/dexie.min.js"></script>
+    <script>
+        // Apply persisted theme before paint to avoid flash.
+        (function () {
+            try {
+                var saved = localStorage.getItem('theme');
+                var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                var theme = saved || (prefersDark ? 'dark' : 'light');
+                document.documentElement.setAttribute('data-theme', theme);
+            } catch (e) {}
+        })();
 
-<!-- Load your IndexedDB logic -->
-<script src="./dexie.js"></script>
- <script src="/socket.io/socket.io.js"></script>
-    <script  type="module" src="./script.js"></script>
+        // Toast notification system — available globally to all scripts.
+        function showToast(message, type, duration) {
+            type = type || 'info';
+            duration = duration || 3500;
+            var icons = {
+                success: 'fas fa-check-circle',
+                error:   'fas fa-times-circle',
+                warning: 'fas fa-exclamation-triangle',
+                info:    'fas fa-info-circle'
+            };
+            var container = document.getElementById('toast-container');
+            if (!container) return;
+            var toast = document.createElement('div');
+            toast.className = 'toast toast-' + type;
+            toast.style.setProperty('--toast-dur', duration + 'ms');
+            toast.innerHTML =
+                '<i class="' + (icons[type] || icons.info) + ' toast-icon"></i>' +
+                '<span class="toast-msg">' + message + '</span>' +
+                '<button class="toast-close" aria-label="Close"><i class="fas fa-times"></i></button>' +
+                '<div class="toast-progress"></div>';
+            container.appendChild(toast);
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () { toast.classList.add('toast-show'); });
+            });
+            function dismiss() {
+                toast.classList.remove('toast-show');
+                toast.classList.add('toast-hide');
+                toast.addEventListener('transitionend', function () { toast.remove(); }, { once: true });
+            }
+            toast.querySelector('.toast-close').addEventListener('click', dismiss);
+            var timer = setTimeout(dismiss, duration);
+            toast.addEventListener('mouseenter', function () { clearTimeout(timer); toast.style.setProperty('--toast-dur', '0ms'); toast.querySelector('.toast-progress').style.animationPlayState = 'paused'; });
+            toast.addEventListener('mouseleave', function () { timer = setTimeout(dismiss, 800); toast.querySelector('.toast-progress').style.animationPlayState = 'running'; });
+        }
+    </script>
+    <link rel="stylesheet" href="/fontawesome/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <script src="/js/dexie.min.js"></script>
+    <script src="./dexie.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module" src="./script.js"></script>
 </head>
 <body>
-    <div class="container">
-        <!-- Chat Section -->
-        <div class="section chat-section">
-            <div class="section-header">
-                <div class="section-header-left">
-                    <i class="fas fa-comments"></i>
-                    <h2>MQTT Messages</h2>
-                </div>
-                <div class="header-actions">
-                    <button class="header-btn" id="clearChatBtn" title="Clear Chat">
-                        <i class="fas fa-trash">Clear Chat</i>
-                    </button>
-                    <button class="header-btn" id="exportChatBtn" title="Export Chat">
-                        <i class="fas fa-download">Export Chat</i>
-                    </button>
+    <div id="toast-container"></div>
+
+    <!-- ── Global App Header ───────────────────────────────────── -->
+    <header class="app-header">
+        <div class="app-brand">
+            <div class="brand-mark"><i class="fas fa-broadcast-tower"></i></div>
+            <div class="brand-text">
+                <span class="brand-name">MQTT Control</span>
+                <span class="brand-tag">Center</span>
+            </div>
+        </div>
+
+        <div id="connectionStatus" class="status-indicator status-disconnected">
+            <i class="fas fa-circle"></i> Disconnected
+        </div>
+
+        <div class="app-header-actions">
+            <button class="app-btn" id="themeToggleBtn" title="Toggle theme" aria-label="Toggle theme">
+                <i class="fas fa-moon" aria-hidden="true"></i>
+                <span>Theme</span>
+            </button>
+            <button class="app-btn" id="clearChatBtn" title="Clear messages">
+                <i class="fas fa-trash" aria-hidden="true"></i>
+                <span>Clear</span>
+            </button>
+            <button class="app-btn" id="exportChatBtn" title="Export messages">
+                <i class="fas fa-download" aria-hidden="true"></i>
+                <span>Export</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- ── App Body ─────────────────────────────────────────────── -->
+    <div class="app-body">
+
+        <!-- ── Control Pane (left) ─────────────────────────────── -->
+        <aside class="pane pane-control">
+            <div class="pane-header">
+                <i class="fas fa-sliders-h"></i>
+                <span>Control Panel</span>
+            </div>
+
+            <!-- Tab navigation -->
+            <div class="tab-bar">
+                <button class="tab-btn active" data-tab="connect">
+                    <i class="fas fa-plug"></i> <span>Connect</span>
+                </button>
+                <button class="tab-btn" data-tab="topics">
+                    <i class="fas fa-rss"></i> <span>Topics</span>
+                </button>
+                <button class="tab-btn" data-tab="commands">
+                    <i class="fas fa-terminal"></i> <span>Commands</span>
+                </button>
+            </div>
+
+            <div class="settings-content">
+
+                <!-- Tab: Connect -->
+                <div class="tab-panel active" id="tab-connect">
+
+                    <div class="help-banner">
+                        <div class="banner-title"><i class="fas fa-circle-info"></i> Quick Start</div>
+                        <ol>
+                            <li>Enter your MQTT broker IP, port, and credentials below</li>
+                            <li>Click <strong>Connect</strong> — the status badge will turn green</li>
+                            <li>Save settings as a profile for quick reload next time</li>
+                        </ol>
+                    </div>
+
+                    <!-- Profiles -->
+                    <div class="config-card">
+                        <h3><i class="fas fa-user-circle"></i> Profiles</h3>
+                        <div class="inline-row">
+                            <input type="text" id="profileName" placeholder="New profile name" style="flex:1">
+                            <button id="saveProfileBtn" class="btn btn-primary icon-btn">
+                                <i class="fas fa-save"></i> Save
+                            </button>
+                        </div>
+                        <div class="inline-row" style="margin-top:0.45rem">
+                            <select id="profileList" style="flex:1">
+                                <option value="">Load a profile…</option>
+                            </select>
+                            <button id="loadProfileBtn" class="btn btn-secondary icon-btn">
+                                <i class="fas fa-download"></i> Load
+                            </button>
+                            <button id="deleteProfileBtn" class="btn btn-error icon-btn">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- MQTT Configuration -->
+                    <div class="config-card">
+                        <h3><i class="fas fa-network-wired"></i> Broker Configuration</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="protocol">Protocol</label>
+                                <select id="protocol">
+                                    <option value="mqtt">MQTT (unencrypted)</option>
+                                    <option value="mqtts">MQTTS (TLS)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="port">Port</label>
+                                <input type="text" id="port" placeholder="1883">
+                                <p class="field-hint">Default: 1883 · 8883 (TLS)</p>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="mqttid">Client ID</label>
+                                <input type="text" id="mqttid" placeholder="my-device-01">
+                            </div>
+                            <div class="form-group">
+                                <label for="password">Password</label>
+                                <input type="password" id="password" placeholder="Optional">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="ip">Broker IP / Hostname</label>
+                            <input type="text" id="ip" placeholder="192.168.1.100 or broker.example.com">
+                        </div>
+                        <div class="inline-row" style="margin-top:.6rem">
+                            <button id="connectBtn" class="btn btn-primary" style="flex:1">
+                                <i class="fas fa-plug"></i> Connect
+                            </button>
+                            <button id="disconnectBtn" class="btn btn-error" style="flex:1">
+                                <i class="fas fa-times"></i> Disconnect
+                            </button>
+                            <button id="saveCredentials" class="btn btn-secondary icon-btn" title="Save credentials">
+                                <i class="fas fa-save"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                </div><!-- /tab-connect -->
+
+                <!-- Tab: Topics -->
+                <div class="tab-panel" id="tab-topics">
+
+                    <div class="help-banner">
+                        <div class="banner-title"><i class="fas fa-circle-info"></i> How Topics Work</div>
+                        <ul>
+                            <li><strong>Subscribe</strong> — receive incoming messages from a topic (e.g. <code>sensors/+</code>)</li>
+                            <li><strong>Publish</strong> — the topic your commands are sent to</li>
+                        </ul>
+                    </div>
+
+                    <div class="config-card">
+                        <h3><i class="fas fa-rss"></i> Topics</h3>
+
+                        <div class="form-group">
+                            <label for="subscribeTopic">Subscribe to Topic</label>
+                            <input type="text" id="subscribeTopic" placeholder="e.g. sensors/temperature">
+                            <p class="field-hint">Use <code>+</code> single-level · <code>#</code> multi-level wildcard</p>
+                        </div>
+                        <div class="btn-group" style="margin-bottom:.7rem">
+                            <button id="sub_btn" class="btn btn-primary" style="flex:1">
+                                <i class="fas fa-bell"></i> Subscribe
+                            </button>
+                            <button id="unsub_btn" class="btn btn-warning" style="flex:1">
+                                <i class="fas fa-bell-slash"></i> Unsubscribe
+                            </button>
+                        </div>
+                        <div id="subscriptionStatus" class="status-indicator status-disconnected" style="margin-bottom:1rem">
+                            <i class="fas fa-circle"></i> Not Subscribed
+                        </div>
+
+                        <div class="form-group">
+                            <label for="publishTopic">Publish Topic</label>
+                            <input type="text" id="publishTopic" placeholder="e.g. devices/control">
+                            <p class="field-hint">Commands from the Commands tab are sent to this topic</p>
+                        </div>
+                        <button id="submit" class="btn btn-success" style="width:100%">
+                            <i class="fas fa-check"></i> Set Publish Topic
+                        </button>
+                    </div>
+
+                </div><!-- /tab-topics -->
+
+                <!-- Tab: Commands -->
+                <div class="tab-panel" id="tab-commands">
+
+                    <div class="help-banner">
+                        <div class="banner-title"><i class="fas fa-circle-info"></i> Command Types</div>
+                        <ul>
+                            <li><strong>Short</strong> — 4-field: Node · Element · Command · Data</li>
+                            <li><strong>Long</strong> — motion profile: Node · Element · Op + 3×(Speed · Delay)</li>
+                            <li><strong>String</strong> — raw text sent directly to the publish topic</li>
+                        </ul>
+                        <p style="margin-top:.35rem;color:var(--text-2)">Press <kbd>Enter</kbd> in any field or click <strong>Send Command</strong> to publish.</p>
+                    </div>
+
+                    <!-- Command builder -->
+                    <div class="config-card">
+                        <h3><i class="fas fa-terminal"></i> Command Builder</h3>
+
+                        <div class="cmd-type-tabs" style="margin-bottom:.75rem">
+                            <button class="cmd-type-btn active" data-cmd="1">Short</button>
+                            <button class="cmd-type-btn" data-cmd="2">Long</button>
+                            <button class="cmd-type-btn" data-cmd="3">String</button>
+                        </div>
+                        <!-- Hidden select kept for existing JS -->
+                        <select id="commandType" style="display:none">
+                            <option value="1">Short Command</option>
+                            <option value="2">Long Command</option>
+                            <option value="3">String</option>
+                        </select>
+
+                        <div id="shortCommandInputs">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="controlNode">Node</label>
+                                    <input type="number" id="controlNode" placeholder="e.g. 1" min="1">
+                                </div>
+                                <div class="form-group">
+                                    <label for="elementId">Element ID</label>
+                                    <input type="number" id="elementId" placeholder="e.g. 1" min="1">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="deviceCommand">Command</label>
+                                    <input type="number" id="deviceCommand" placeholder="e.g. 1" min="1">
+                                </div>
+                                <div class="form-group">
+                                    <label for="commandData">Data</label>
+                                    <input type="number" id="commandData" placeholder="e.g. 1" min="1">
+                                </div>
+                            </div>
+                            <p class="format-hint">Output: <em>#*Node*ElementID*Command*Data*#</em></p>
+                        </div>
+
+                        <div id="longCommandInputs" style="display:none">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="longControlNode">Node</label>
+                                    <input type="number" id="longControlNode" placeholder="Node" min="1">
+                                </div>
+                                <div class="form-group">
+                                    <label for="longelementid">Element ID</label>
+                                    <input type="number" id="longelementid" placeholder="Element" min="1">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="longoperation">Operation</label>
+                                    <input type="number" id="longoperation" placeholder="Op" min="1">
+                                </div>
+                                <div class="form-group">
+                                    <label for="longspeed1">Speed 1</label>
+                                    <input type="number" id="longspeed1" placeholder="Speed" min="1">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="longdelay1">Delay 1</label>
+                                    <input type="number" id="longdelay1" placeholder="Delay" min="1">
+                                </div>
+                                <div class="form-group">
+                                    <label for="longspeed2">Speed 2</label>
+                                    <input type="number" id="longspeed2" placeholder="Speed" min="1">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="longdelay2">Delay 2</label>
+                                    <input type="number" id="longdelay2" placeholder="Delay" min="1">
+                                </div>
+                                <div class="form-group">
+                                    <label for="longspeed3">Speed 3</label>
+                                    <input type="number" id="longspeed3" placeholder="Speed" min="1">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="stringCommandInput" style="display:none">
+                            <div class="form-group">
+                                <label for="stringCommand">Command String</label>
+                                <input type="text" id="stringCommand" placeholder="Enter any text command">
+                                <p class="field-hint">Sent as-is to the publish topic</p>
+                            </div>
+                        </div>
+
+                        <div class="btn-group" style="margin-top:.75rem">
+                            <button id="sendCommandBtn" class="btn btn-primary" style="flex:1">
+                                <i class="fas fa-paper-plane"></i> Send Command
+                            </button>
+                            <button id="clearCommand" class="btn btn-warning">
+                                <i class="fas fa-eraser"></i> Clear
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Bulk Commands -->
+                    <div class="config-card">
+                        <h3><i class="fas fa-file-excel"></i> Bulk Commands</h3>
+                        <div class="file-upload">
+                            <input type="file" id="fileInput" accept=".xlsx,.xls">
+                            <label for="fileInput" class="file-upload-label">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <span>Click or drag an Excel file here</span>
+                            </label>
+                        </div>
+                        <p class="field-hint" style="margin-top:.4rem">
+                            <strong>Columns:</strong> Node · ElementID · Command · Data
+                        </p>
+                        <button id="uploadBtn" class="btn btn-primary" style="margin-top:.65rem;width:100%">
+                            <i class="fas fa-upload"></i> Process &amp; Send File
+                        </button>
+                    </div>
+
+                </div><!-- /tab-commands -->
+
+            </div><!-- /settings-content -->
+        </aside><!-- /pane-control -->
+
+        <!-- ── Chat Pane (right) ────────────────────────────────── -->
+        <main class="pane pane-chat">
+            <div class="pane-header">
+                <i class="fas fa-comments"></i>
+                <span>Messages</span>
+                <div class="chat-stats" id="chatStats">
+                    Messages: <span id="messageCount">0</span>
+                    &nbsp;·&nbsp;
+                    Session: <span id="connectionTime">--</span>
                 </div>
             </div>
             <div class="chat-box" id="chatBox">
                 <div class="empty-chat" id="emptyChatState">
-                    <i class="fas fa-comments"></i>
-                    <div>
-                        <h3>No messages yet</h3>
-                        <p>Configure your MQTT connection to start receiving messages</p>
+                    <div class="empty-icon-wrap"><i class="fas fa-satellite-dish"></i></div>
+                    <h3>No messages yet</h3>
+                    <p>Connect to a broker and subscribe to a topic to see messages here.</p>
+                    <div class="quick-steps">
+                        <div class="quick-step">
+                            <span class="step-badge">1</span>
+                            <span>Fill broker details in <strong>Connect</strong> tab</span>
+                        </div>
+                        <div class="quick-step">
+                            <span class="step-badge">2</span>
+                            <span>Set topics in the <strong>Topics</strong> tab</span>
+                        </div>
+                        <div class="quick-step">
+                            <span class="step-badge">3</span>
+                            <span>Send commands from the <strong>Commands</strong> tab</span>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="chat-stats" id="chatStats">
-                Messages: <span id="messageCount">0</span> | 
-                Connected: <span id="connectionTime">--</span>
-            </div>
-        </div>
+        </main><!-- /pane-chat -->
 
-        <!-- Settings Section -->
-        <div class="section settings-section">
-            <div class="section-header">
-                <div class="section-header-left">
-                    <i class="fas fa-cog"></i>
-                    <h2>Control Panel</h2>
-                </div>
-            </div>
-            
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            
-            <div class="settings-content">
-
-<!-- Profile Management Section -->
-<div class="config-card">
-    <h3><i class="fas fa-user"></i> Profile Management</h3>
-    <div class="form-group">
-        <label for="profileName">Profile Name</label>
-        <input type="text" id="profileName" placeholder="Enter profile name">
-    </div>
-    <div class="form-group">
-        <label for="profileList">Saved Profiles</label>
-        <select id="profileList">
-            <option value="">Select a profile</option>
-            <!-- Profiles will be loaded here -->
-        </select>
-    </div>
-    <div class="btn-group">
-        <button id="saveProfileBtn" class="btn btn-primary">
-            <i class="fas fa-save"></i> Save Profile
-        </button>
-        <button id="loadProfileBtn" class="btn btn-secondary">
-            <i class="fas fa-download"></i> Load Profile
-        </button>
-        <button id="deleteProfileBtn" class="btn btn-error">
-            <i class="fas fa-trash"></i> Delete Profile
-        </button>
-    </div>
-</div>
-
-
-
-
-                <!-- MQTT Configuration -->
-                <div class="config-card">
-                    <h3><i class="fas fa-network-wired"></i> MQTT Configuration</h3>
-                    <div class="form-group">
-                        <label for="protocol">Protocol</label>
-                        <select id="protocol">
-                            <option value="mqtt">MQTT (mqtt://)</option>
-                            <option value="mqtts">MQTTS (mqtts://)</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="mqttid">MQTT ID</label>
-                            <input type="text" id="mqttid" placeholder="Client ID">
-                        </div>
-                        <div class="form-group">
-                            <label for="password">Password</label>
-                            <input type="password" id="password" placeholder="Password">
-                        </div>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="ip">Broker IP</label>
-                            <input type="text" id="ip" placeholder="Broker IP">
-                        </div>
-                        <div class="form-group">
-                            <label for="port">Port</label>
-                            <input type="text" id="port" placeholder="Port">
-                        </div>
-                    </div>
-                    
-                    <div class="btn-group">
-                        <button id="connectBtn" class="btn btn-primary">
-                            <i class="fas fa-plug"></i> Connect
-                        </button>
-                        <button id="disconnectBtn" class="btn btn-error">
-                            <i class="fas fa-times"></i> Disconnect
-                        </button>
-                        <button id="saveCredentials" class="btn btn-secondary">
-                            <i class="fas fa-save"></i> Save
-                        </button>
-                    </div>
-                    
-                    <div id="connectionStatus" class="status-indicator status-disconnected">
-                        <i class="fas fa-circle"></i> Disconnected
-                    </div>
-                </div>
-
-                <!-- Topic Management -->
-                <div class="config-card">
-                    <h3><i class="fas fa-rss"></i> Topic Management</h3>
-                    <div class="form-group">
-                        <label for="subscribeTopic">Subscription Topic</label>
-                        <input type="text" id="subscribeTopic" placeholder="Topic to subscribe">
-                    </div>
-                    
-                    <div class="btn-group">
-                        <button id="sub_btn" class="btn btn-primary">
-                            <i class="fas fa-bell"></i> Subscribe
-                        </button>
-                        <button id="unsub_btn" class="btn btn-warning">
-                            <i class="fas fa-bell-slash"></i> Unsubscribe
-                        </button>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="publishTopic">Publishing Topic</label>
-                        <input type="text" id="publishTopic" placeholder="Topic to publish">
-                        <button id="submit" class="btn btn-success" style="margin-top: 0.5rem;">
-                            <i class="fas fa-check"></i> Set Topic
-                        </button>
-                    </div>
-                    
-                    <div id="subscriptionStatus" class="status-indicator status-disconnected">
-                        <i class="fas fa-circle"></i> Not Subscribed
-                    </div>
-                </div>
-
-              <!-- Command Control -->
-                <div class="config-card">
-                    <h3><i class="fas fa-terminal"></i> Command Control</h3>
-                    <select id="commandType">
-                        <option value="1">Short Command</option>
-                        <option value="2">Long Command</option>
-                        <option value="3">String</option>
-                     
-                       
-                    </select>
-                    <div id="shortCommandInputs">
-
-                        <div class="form-row">
-                        <div class="form-group">
-                            <label for="controlNode">Control Node Command</label>
-                            <input type="number" id="controlNode" placeholder="Node" min="1">
-                        </div>
-                        <div class="form-group">
-                            <label for="elementId">Element ID</label>
-                            <input type="number" id="elementId" placeholder="Element" min="1">
-                        </div>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="deviceCommand">Device Command</label>
-                            <input type="number" id="deviceCommand" placeholder="Command" min="1">
-                        </div>
-                        <div class="form-group">
-                            <label for="commandData">Data</label>
-                            <input type="number" id="commandData" placeholder="Data" min="1">
-                        </div>
-                    </div>
-
-                    </div>
-
-                        <div id="longCommandInputs" style="display: none;" >
-        <!-- Add 11 input fields here -->
-        <div class="form-row">
-            <div class="form-group">
-                <label for="longControlNode">Control Node Command</label>
-                <input type="number" id="longControlNode" placeholder="Node" min="1">
-            </div>
-           <div class="form-group">
-                            <label for="longelementid">Element iD </label>
-                            <input type="number" id="longelementid" placeholder="Data" min="1">
-                        </div>
-        </div>
-        <div class="form-row">
-            <div class="form-group">
-                <label for="longoperation">Operation</label>
-                <input type="number" id="longoperation" placeholder="Node" min="1">
-            </div>
-           <div class="form-group">
-                            <label for="longspeed1">Speed 1</label>
-                            <input type="number" id="longspeed1" placeholder="Data" min="1">
-                        </div>
-        </div>
-        <div class="form-row">
-            <div class="form-group">
-                <label for="longdelay1">Delay 1</label>
-                <input type="number" id="longdelay1" placeholder="Node" min="1">
-            </div>
-           <div class="form-group">
-                            <label for="longspeed2">Speed 2 </label>
-                            <input type="number" id="longspeed2" placeholder="Data" min="1">
-                        </div>
-        </div>
-        <div class="form-row">
-            <div class="form-group">
-                <label for="longdelay2">Delay 2</label>
-                <input type="number" id="longdelay2" placeholder="Node" min="1">
-            </div>
-           <div class="form-group">
-                            <label for="longspeed3">Speed 3</label>
-                            <input type="number" id="longspeed3" placeholder="Data" min="1">
-                        </div>
-        </div>
-       
-    </div>
-
-
-     <div id="stringCommandInput" style="display: none;">
-        <div class="form-group">
-            <label for="stringCommand">String Command</label>
-            <input type="text" id="stringCommand" placeholder="Enter your command">
-        </div>
-    </div>
-                    
-                    
-                    <button id="clearCommand" class="btn btn-warning">
-                        <i class="fas fa-eraser"></i> Clear Fields
-                    </button>
-                </div>
-
-
-
-
- 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                <!-- File Upload -->
-                <div class="config-card">
-                    <h3><i class="fas fa-file-excel"></i> Bulk Commands</h3>
-                    <div class="file-upload">
-                        <input type="file" id="fileInput" accept=".xlsx,.xls">
-                        <label for="fileInput" class="file-upload-label">
-                            <i class="fas fa-cloud-upload-alt"></i>
-                            <span>Upload Excel file</span>
-                        </label>
-                    </div>
-                    <button id="uploadBtn" class="btn btn-primary" style="margin-top: 0.75rem;">
-                        <i class="fas fa-upload"></i> Process File
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-   
- 
+    </div><!-- /app-body -->
 </body>
 </html>

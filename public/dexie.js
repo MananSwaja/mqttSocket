@@ -12,7 +12,7 @@ db.version(1).stores({
 async function saveProfile() {
     const profileName = document.getElementById("profileName").value;
     if (!profileName) {
-        alert("Please enter a profile name.");
+        showToast("Please enter a profile name.", "warning");
         return;
     }
 
@@ -29,11 +29,11 @@ async function saveProfile() {
 
     try {
         await db.profiles.add(profile);
-        alert("Profile saved successfully!");
+        showToast("Profile saved successfully!", "success");
         loadProfileList();
     } catch (error) {
         console.error("Error saving profile:", error);
-        alert("Error saving profile.");
+        showToast("Error saving profile.", "error");
     }
 }
 
@@ -55,7 +55,7 @@ async function saveProfile() {
 async function loadProfile() {
     const profileId = document.getElementById("profileList").value;
     if (!profileId) {
-        alert("Please select a profile to load.");
+        showToast("Please select a profile to load.", "warning");
         return;
     }
 
@@ -68,12 +68,12 @@ async function loadProfile() {
         document.getElementById("password").value = profile.password;
         document.getElementById("publishTopic").value = profile.publishTopic;
         document.getElementById("subscribeTopic").value = profile.subscribeTopic;
-        alert("Profile loaded successfully!");
+        showToast("Profile loaded successfully!", "success");
 
         setLastSelectedProfile(profileId);
 
     } else {
-        alert("Profile not found.");
+        showToast("Profile not found.", "error");
     }
 }
 
@@ -81,18 +81,18 @@ async function loadProfile() {
 async function deleteProfile() {
     const profileId = document.getElementById("profileList").value;
     if (!profileId) {
-        alert("Please select a profile to delete.");
+        showToast("Please select a profile to delete.", "warning");
         return;
     }
 
     if (confirm("Are you sure you want to delete this profile?")) {
         try {
             await db.profiles.delete(parseInt(profileId));
-            alert("Profile deleted successfully!");
+            showToast("Profile deleted successfully!", "success");
             loadProfileList();
         } catch (error) {
             console.error("Error deleting profile:", error);
-            alert("Error deleting profile.");
+            showToast("Error deleting profile.", "error");
         }
     }
 }
