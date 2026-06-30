@@ -48,26 +48,7 @@ app.use(
   })
 );
 
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
-        connectSrc: [
-  "'self'",
-  "http://localhost:3001",
-  "ws://localhost:3001",
-  "https://mqtt-socket-backend.onrender.com",
-  "wss://mqtt-socket-backend.onrender.com",
-  "https://mqtt-socket-swaja.vercel.app",
-  "wss://mqtt-socket-swaja.vercel.app"
-],
-      },
-    },
-  })
-);
-app.use(express.static("public"));
+
 
 // Multer storage config
 const storage = multer.diskStorage({
@@ -108,13 +89,7 @@ app.post("/upload", upload.single("file"), (req, res) => {
   fs.unlinkSync(filePath);
 });
 
-app.use((req, res, next) => {
-  res.setHeader(
-    "Content-Security-Policy",
-    "default-src 'self'; connect-src 'self' ws://localhost:3001 http://localhost:3001"
-  );
-  next();
-});
+
 
 let client;
 
@@ -368,34 +343,37 @@ server.listen(process.env.PORT, () => {
   console.log(`listening on *: ${process.env.PORT}`);
 });
 
+    app.use(
+  cors({
+    origin: [
+      "http://localhost:3001",
+      "https://mqtt-socket-swaja.vercel.app",
+    ],
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
 app.use(
   helmet({
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-
-        scriptSrc: [
-          "'self'",
-          "'unsafe-inline'"
-        ],
-
+        scriptSrc: ["'self'", "'unsafe-inline'"],
         styleSrc: [
           "'self'",
           "'unsafe-inline'",
           "https://cdnjs.cloudflare.com",
           "https://fonts.googleapis.com"
         ],
-
         fontSrc: [
           "'self'",
           "https://fonts.gstatic.com"
         ],
-
         imgSrc: [
           "'self'",
           "data:"
         ],
-
         connectSrc: [
           "'self'",
           "http://localhost:3001",
@@ -411,6 +389,7 @@ app.use(
 );
 
 app.use(express.static("public"));
+
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
